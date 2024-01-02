@@ -37,3 +37,6 @@ if "-v" in sys.argv:
 
 if verbose:
     print(f"[*] connecting to {ip}:{port}")
+
+client = Client(ip, port)
+client.connect()
