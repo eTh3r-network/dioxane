@@ -5,4 +5,7 @@
 
 import gnupg
 
+gpg = gnupg.GPG()
 
+def getKey(key_id):
+    return gpg.export_keys(key_id, False, armor=False)
