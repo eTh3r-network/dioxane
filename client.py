@@ -37,8 +37,9 @@ except:
 
 skip = 0
 for (i, arg) in enumerate(sys.argv):
-    while skip > 0:
+    if skip > 0:
         skip -= 1
+        continue
 
     if arg == "-h":
         help()
