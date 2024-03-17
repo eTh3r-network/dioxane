@@ -23,7 +23,7 @@ class Input:
         self.listening = True
         self.prompt = ""
         while self.listening:
-            char: int = self.client.display.stdscr.getch()
+            char: int = self.client.display.input_windows.getch()
 
             if char == -1:
                 pass
@@ -45,6 +45,18 @@ class Input:
                     self.prompt_cursor += 1
                     if self.prompt_cursor > len(self.prompt):
                         self.prompt_cursor = len(self.prompt)
+
+                elif char == curses.KEY_UP:
+                    self.client.display.scroll(-1)
+
+                elif char == curses.KEY_DOWN:
+                    self.client.display.scroll(1)
+
+                elif char == curses.KEY_SR:
+                    self.client.display.scroll(-1)
+
+                elif char == curses.KEY_SF:
+                    self.client.display.scroll(1)
 
                 elif char == 8:  # Del key
                     self.prompt = self.prompt[:self.prompt_cursor-1] + self.prompt[self.prompt_cursor:]

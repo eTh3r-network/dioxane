@@ -2,6 +2,7 @@ from threading import Thread
 
 from client.client import Client
 from client.simple_client.simple_client_connection_state import Server, ConnectionState
+from display.pad_curses import PadCurses
 from misc.hex_enumerator import bytes_to_str, bytes_to_int, str_to_bytes
 from models.identity import Identity
 from models.message import Message
@@ -40,7 +41,7 @@ class SimpleClient(Client):
     def __init__(self, identity: Identity, name: str = "DIOXANE"):
         super().__init__(identity, name)
 
-        self.display = SimpleCurses(self)
+        self.display = PadCurses(self)
 
         # Start the server
         self.server = Server(FakeConnection(), self)
