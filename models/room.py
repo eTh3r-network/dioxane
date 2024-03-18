@@ -23,22 +23,24 @@ class Room:
     # Recipient of the room has to be saved client side so we can know afterward who is talking in the room
     recipient: Identity
     messages: list[Message]  # List of message in the room
+    id: Identity  # Id of the room server side
 
     def __init__(self, recipient: Identity):
         self.recipient = recipient
         self.name = str(recipient)
         self.state = RoomState.INEXISTANT
         self.messages = []
+        self.id = None
 
     def add_message(self, message: Message):
         """
         Add message in the room
         :param message: Message
         """
-        if message.type is None:
+        if message.message_type is None:
             if message.recipient == self.recipient:
-                message.type = MessageType.SENT
+                message.message_type = MessageType.SENT
             if message.sender == self.recipient:
-                message.type = MessageType.RECEIVE
+                message.message_type = MessageType.RECEIVE
 
         self.messages.append(message)

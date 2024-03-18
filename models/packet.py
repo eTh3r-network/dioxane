@@ -43,6 +43,8 @@ class Packet:
 
     def __init__(self, payload: bytearray | bytes | int | str | PacketCode, options: list[bytearray] = []):
 
+        if options is None:
+            options = []
         self.options = options.copy()
         bytesEnumerator: enumerate
 
@@ -128,14 +130,26 @@ class Packet:
                 self.options += [room_length, room_id, key_length, key_id]
 
             case PacketCode.MESSAGE_SEND:
-                raise NotImplementedError(f"Package {self.code} is not yet implemented")
+                room_length = _read_bytes(bytesEnumerator, 1)
+
+                room_id = _read_bytes(bytesEnumerator, room_length)
+                encryption = _read_bytes(bytesEnumerator, 1)
+
+                payload = bytearray(b'')
+                while True:
+                    try:
+                        payload = _read_bytes(bytesEnumerator, 1, value=payload)
+                    except EndOfEnumerator:
+                        break
+
+                self.options += [room_length, room_id, encryption, payload]
 
             # Error
             case PacketCode.ERR_WRONG_PACKET_LENGTH | PacketCode.ERR_WRONG_PACKET_ID | \
                  PacketCode.ERR_UNSUPPORTED_VERSION | PacketCode.ERR_INCOMPLETE_KEY | PacketCode.ERR_KEY_MALFORMED | \
                  PacketCode.ERR_KEY_PAYLOAD_MALFORMED | PacketCode.ERR_MALFORMATION | PacketCode.ERR_OUT_OF_PATH | \
                  PacketCode.ERR_UNKNOWN_PACKET_ID | PacketCode.ERR_NOT_IMPLEMENTED | PacketCode.ERR_FAULTY_READING:
-                raise NotImplementedError(f"Package {self.code} is not yet implemented")
+                raise NotImplementedError(f"Reading a packet {self.code.name} is not yet implemented")
 
     def to_bytes(self):
         return int_to_bytes(self.code) + b"".join(self.options)

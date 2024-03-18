@@ -80,6 +80,7 @@ class PadCurses(SimpleCurses):
         else:
             self._display_message(message, len(self.messages) - 1)
 
+
     def _update_cursor(self, y=0, x=None):
         if x is None:
             x = self.prompt_cursor + 2

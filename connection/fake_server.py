@@ -13,8 +13,8 @@ class FakeConnection(Connection):
     It will reply to any packet recieved with an ACK (can be turned off during init)
     """
     _packets: list[bytearray]  # List of packet to send (FIFO)
-    _reply_with_ACK: int = 2  # Time in second between two packet
-    _delay: int = 2  # Time in second between two packet
+    _reply_with_ACK: bool = False  # Reply packet recieved with ACK + pck
+    _delay: float = 0.1  # Time in second between two packet
 
     def __init__(self):
         self._packets = []
@@ -26,10 +26,8 @@ class FakeConnection(Connection):
                 self._notify_observers(self._packets.pop(0))
             time.sleep(self._delay)
 
-    def send(self, pck: bytearray | Packet):
-        if type(pck) is Packet:
-            pck = pck.to_bytes()
-            # Supposely send them
+    def send(self, pck: bytearray):
+        # Supposely send them
 
         if self._reply_with_ACK:
             self.receive(int_to_bytes(PacketCode.ACK.value) + pck)

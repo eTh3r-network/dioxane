@@ -122,17 +122,17 @@ class SimpleCurses(Display):
             color = SimpleCursesColor.SUCCESS
 
         if message.message_type == MessageType.SENT:
-            header = f"[{message.recipient}] "
+            if message.ack:
+                header = f"[To   {message.room.recipient}] "
+            else:
+                header = f"(To   {message.room.recipient}) "
             color = SimpleCursesColor.MESSAGE_SEND
 
         if message.message_type == MessageType.RECEIVE:
-            if message.sender:
-                header = f"[{message.sender}] "
-            elif message.room:
-                header = f"[{message.room}]"
+            header = f"[From {message.room.recipient}] "
             color = SimpleCursesColor.MESSAGE_RECIEVE
 
-        self._display(header + message.payload.decode(), height, color)
+        self._display(header + message.payload.decode("ascii"), height, color)
 
     def _display_base_gui(self):
         """
@@ -169,6 +169,13 @@ class SimpleCurses(Display):
 
     def display_success(self, text: str):
         return self.display_message(Message(payload=text, message_type=MessageType.SUCCESS))
+
+    def update_message(self, message: Message):
+        try:
+            index: int = self.messages.index(message)
+            self._display_message(message, index)
+        except ValueError:
+            self.display_error(f"Trying to update message but can't find it : {message.payload.decode('ascii')}")
 
     def _update_cursor(self, y=0, x=None):
         if x is None:

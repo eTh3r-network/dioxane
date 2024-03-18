@@ -34,17 +34,3 @@ class Server:
         self.connection = connection
         self.client = client
         self.state = ConnectionState.DECONNECTED
-
-    def get_hey_packet(self) -> Packet:
-        """
-        Build the Hey packet to connect the client to the server
-        :return: Hey Packet
-        """
-        return Packet(PacketCode.HEY, [self.client.ether_version.to_bytes(2, 'big')])
-
-    def get_send_key_packet(self):
-        """
-        Build the Key Packet
-        :return:
-        """
-        return Packet(PacketCode.SEND_KEY, self.client.identity.get_key_pair())

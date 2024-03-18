@@ -1,3 +1,4 @@
+import random
 from enum import Enum, auto
 
 from models.identity import Identity
@@ -25,6 +26,7 @@ class Message:
     room: "Room"  # Room where it was sent/recieved
     ack: bool  # Was it ACK by the server (for sent message)
     message_type: MessageType  # Type
+    id: int  # Random int
 
     def __init__(self, payload: bytearray | str, sender: Identity = None, recipient: Identity = None,
                  room: "Room" = None, ack: bool = True, message_type: MessageType = None):
@@ -40,6 +42,7 @@ class Message:
         if type(payload) is str:
             payload = bytearray(payload.encode())
 
+        self.id = random.getrandbits(10)
         self.payload = payload
         self.sender = sender
         self.recipient = recipient
@@ -47,5 +50,5 @@ class Message:
         self.ack = ack
         self.message_type = message_type
 
-    def get_send_package(self):
-        return Packet(PacketCode.MESSAGE_SEND, self.recipient.get_key_id_pair().append(self.payload))
+    def __hash__(self):
+        return hash(self.id)

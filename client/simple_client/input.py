@@ -65,7 +65,7 @@ class Input:
                 elif char == curses.KEY_DC:
                     self.prompt = self.prompt[:self.prompt_cursor] + self.prompt[self.prompt_cursor+1:]
 
-                else:
+                elif chr(char).isalnum() or chr(char) in self.valid_char:
                     self.prompt = self.prompt[:self.prompt_cursor] + chr(char) + self.prompt[self.prompt_cursor:]
                     self.prompt_cursor += 1
 
