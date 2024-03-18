@@ -2,11 +2,10 @@ from enum import Enum, auto
 
 from client.client import Client
 from connection.connection import Connection
-from models.packet import Packet, PacketCode
 
 
 class ConnectionState(Enum):
-    DECONNECTED = auto()
+    DISCONNECTED = auto()
     CONNECTION_INITIALIZED_VERSION = auto()
     CONNECTION_INITIALIZED_VERSION_ACK = auto()
     CONNECTION_INITIALIZED_KEY = auto()
