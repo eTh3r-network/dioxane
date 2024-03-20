@@ -1,10 +1,10 @@
 import curses
 
-from client.client import Client
+from client.display_client import DisplayClient
 
 
 class Input:
-    client: Client  # TOREWORK : Input needs at least a SimpleClient, but will result in a circular import error
+    client: DisplayClient
     listening: bool
     prompt: str
     prompt_cursor: int

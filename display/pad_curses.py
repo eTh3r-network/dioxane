@@ -2,7 +2,8 @@ import curses
 
 from client.client import Client
 from display.simple_curses import SimpleCurses, SimpleCursesColor
-from models.message import Message, MessageType
+from models.message import MessageType
+from models.room_message import RoomMessage
 
 
 class PadCurses(SimpleCurses):
@@ -46,6 +47,7 @@ class PadCurses(SimpleCurses):
         self._update_scroll()
 
     def _update_scroll(self):
+        # noinspection PyArgumentList
         self.message_pad.noutrefresh(self.windows_scroll, 0, 1, 0, self.height - 2, self.width - 1)
         curses.doupdate()
 
@@ -65,9 +67,9 @@ class PadCurses(SimpleCurses):
         self._display_line(height=0, left_txt="> " + prompt, fillingchar=" ", windows=self.prompt_windows)
         self._update_cursor()
 
-    def display_message(self, message: Message | str):
+    def display_message(self, message: RoomMessage | str):
         if type(message) is str:
-            return self.display_message(Message(payload=message, message_type=MessageType.LOG))
+            return self.display_message(RoomMessage(payload=message, message_type=MessageType.LOG))
 
         self.messages.append(message)
         if self.windows_scroll_jump or self.windows_scroll + 1 == len(self.messages) - (self.height - 2):
@@ -79,7 +81,6 @@ class PadCurses(SimpleCurses):
             self._display_all_messages()
         else:
             self._display_message(message, len(self.messages) - 1)
-
 
     def _update_cursor(self, y=0, x=None):
         if x is None:

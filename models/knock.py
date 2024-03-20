@@ -1,7 +1,6 @@
 from enum import Enum, auto
 
 from models.identity import Identity
-from models.message import Message, MessageType
 
 
 class KnockState(Enum):

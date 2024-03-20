@@ -46,3 +46,11 @@ class Client(ABC):
         :param code: error code
         """
         exit(code)
+
+    @abstractmethod
+    def command(self, text: str):
+        """
+        Execute a command
+        :param text: Command
+        """
+        pass

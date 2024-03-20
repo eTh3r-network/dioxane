@@ -2,7 +2,7 @@ import time
 
 from connection.connection import Connection
 from misc.hex_enumerator import int_to_bytes
-from models.packet import Packet, PacketCode
+from models.packet import PacketCode
 
 
 class FakeConnection(Connection):

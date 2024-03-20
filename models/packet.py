@@ -1,7 +1,7 @@
 from enum import IntEnum
 
 from exceptions.exceptions import MalformedPacketException, EndOfEnumerator
-from misc.hex_enumerator import _read_bytes, int_to_bytes, str_to_bytes, bytes_to_str, bytes_to_int
+from misc.hex_enumerator import read_bytes, int_to_bytes, str_to_bytes, bytes_to_str, bytes_to_int
 
 
 class PacketCode(IntEnum):
@@ -41,7 +41,7 @@ class Packet:
     code: PacketCode
     options: list[bytearray]
 
-    def __init__(self, payload: bytearray | bytes | int | str | PacketCode, options: list[bytearray] = []):
+    def __init__(self, payload: bytearray | bytes | int | str | PacketCode, options: list[bytearray] = None):
 
         if options is None:
             options = []
@@ -72,12 +72,11 @@ class Packet:
                 raise MalformedPacketException("Packet options doesn't match expected size of "
                                                + self.code.name + " : " + bytes_to_str(payload))
 
-
     def _set_code_from_enumerator(self, bytesEnumerator):
         code = bytearray(b'')
         while bytes_to_int(code) not in PacketCode.value2member_map_:
             try:
-                code = _read_bytes(bytesEnumerator, 1, code)
+                code = read_bytes(bytesEnumerator, 1, code)
             except EndOfEnumerator:
                 raise MalformedPacketException("PacketCode doesn't correspond to an implemented code : "
                                                + bytes_to_str(code))
@@ -86,11 +85,11 @@ class Packet:
     def _set_options_from_enumerator(self, bytesEnumerator):
         match self.code:
             case PacketCode.HEY:
-                self.options += _read_bytes(bytesEnumerator, 2)
+                self.options += read_bytes(bytesEnumerator, 2)
 
             case PacketCode.ACK:
                 try:
-                    nextByte = _read_bytes(bytesEnumerator)
+                    nextByte = read_bytes(bytesEnumerator)
 
                     # An KEY_RESPONSE PacketCode can be confused with an ACK as they both start with 0xa0
                     # Thus ACK followed by 0xba are converted into a simple KEY_RESPONSE
@@ -99,7 +98,7 @@ class Packet:
                     else:
                         while True:
                             try:
-                                nextByte = _read_bytes(bytesEnumerator, 1, value=nextByte)
+                                nextByte = read_bytes(bytesEnumerator, 1, value=nextByte)
                             except EndOfEnumerator:
                                 break
                         self.options.append(nextByte)
@@ -107,38 +106,38 @@ class Packet:
                     pass
 
             case PacketCode.SEND_KEY | PacketCode.KEY_RESPONSE:
-                key_length = _read_bytes(bytesEnumerator, 2)
-                self.options += [key_length, _read_bytes(bytesEnumerator, key_length)]
+                key_length = read_bytes(bytesEnumerator, 2)
+                self.options += [key_length, read_bytes(bytesEnumerator, key_length)]
 
             case PacketCode.KNOCK_SEND | PacketCode.KNOCK_RECIEVE | PacketCode.ROOM_CLOSE | PacketCode.KEY_REQUEST \
                  | PacketCode.KEY_UNKNOWN:
-                key_length = _read_bytes(bytesEnumerator, 1)
-                self.options += [key_length, _read_bytes(bytesEnumerator, key_length)]
+                key_length = read_bytes(bytesEnumerator, 1)
+                self.options += [key_length, read_bytes(bytesEnumerator, key_length)]
 
             case PacketCode.KNOCK_RESPONSE:
-                response = _read_bytes(bytesEnumerator, 1)
-                key_length = _read_bytes(bytesEnumerator, 1)
-                self.options += [response, key_length, _read_bytes(bytesEnumerator, key_length)]
+                response = read_bytes(bytesEnumerator, 1)
+                key_length = read_bytes(bytesEnumerator, 1)
+                self.options += [response, key_length, read_bytes(bytesEnumerator, key_length)]
 
             case PacketCode.ROOM_NEW:
-                room_length = _read_bytes(bytesEnumerator, 1)
-                room_id = _read_bytes(bytesEnumerator, room_length)
+                room_length = read_bytes(bytesEnumerator, 1)
+                room_id = read_bytes(bytesEnumerator, room_length)
 
-                key_length = _read_bytes(bytesEnumerator, 1)
-                key_id = _read_bytes(bytesEnumerator, key_length)
+                key_length = read_bytes(bytesEnumerator, 1)
+                key_id = read_bytes(bytesEnumerator, key_length)
 
                 self.options += [room_length, room_id, key_length, key_id]
 
             case PacketCode.MESSAGE_SEND:
-                room_length = _read_bytes(bytesEnumerator, 1)
+                room_length = read_bytes(bytesEnumerator, 1)
 
-                room_id = _read_bytes(bytesEnumerator, room_length)
-                encryption = _read_bytes(bytesEnumerator, 1)
+                room_id = read_bytes(bytesEnumerator, room_length)
+                encryption = read_bytes(bytesEnumerator, 1)
 
                 payload = bytearray(b'')
                 while True:
                     try:
-                        payload = _read_bytes(bytesEnumerator, 1, value=payload)
+                        payload = read_bytes(bytesEnumerator, 1, value=payload)
                     except EndOfEnumerator:
                         break
 
@@ -156,13 +155,3 @@ class Packet:
 
     def __str__(self):
         return "<Packet " + self.code.name + " " + " ".join(list(map(hex, self.options))) + ">"
-
-
-# packet: Packet = Packet(0x123456)
-# packet_HEY: Packet = Packet("0x0531b00b a001")
-# packet_ACK: Packet = Packet("0xa0")
-# packet_KEY_REQUEST: Packet = Packet("0xba 02 baba")
-# packet_KEY_REQUEST2: Packet = Packet("0xba 04 baba202")
-# packet_ROOM_NEW: Packet = Packet("0xac 02cafe 02baba")
-
-# packet_TESt: Packet = Packet(PacketCode.SEND_KEY, me.get_key_pair())

@@ -1,41 +1,33 @@
 from threading import Thread
 
-from client.client import Client
-from client.simple_client.PacketGenerator import PacketGenerator
+from client.io_client import IoClient
+from client.simple_client.packet_generator import PacketGenerator
 from client.simple_client.identity_manager import IdentityManager
 from client.simple_client.simple_client_connection_state import Server, ConnectionState
-from display.pad_curses import PadCurses
 from misc.hex_enumerator import bytes_to_str, bytes_to_int, str_to_bytes
 from models.identity import Identity
 from models.knock import Knock, KnockState
-from models.message import Message, MessageType
+from models.message import MessageType
 from models.packet import Packet, PacketCode
 
-from connection.fake_server import FakeConnection
-
-from display.display import Display
-
-from client.simple_client.input import Input
 from exceptions.exceptions import MalformedPacketException, UnknownRecipient
 from models.room import Room
+from models.room_message import RoomMessage
 
 
-class SimpleClient(Client, IdentityManager):
+class SimpleClient(IoClient, IdentityManager):
     """
     SimpleClient is a basic implementation of Eth3r.
     It works with a Display to output message and input prompt
     It works along a Server, which handle a connection and the state of Eth3r's connection
     """
-    display: Display  # TOREWORK : SimpleClient require at least Simple Curses but
     server: Server
-    input: Input
 
-    knock: dict[Identity, Knock]
+    knocks: dict[Identity, Knock]
     rooms: dict[Identity, Room]
-    roomRecipients: dict[Identity, Identity] # Map Recipient to their Room id
+    roomRecipients: dict[Identity, Identity]  # Map Recipient to their Room id
 
     serverThread: Thread
-    intputThread: Thread
 
     packetGenerator: PacketGenerator
 
@@ -44,21 +36,15 @@ class SimpleClient(Client, IdentityManager):
     def __init__(self, identity: Identity, name: str = "DIOXANE"):
         super().__init__(identity, name)
 
-        self.display = PadCurses(self)
         self.packetGenerator = PacketGenerator(self)
 
         # Start the server
-        self.server = Server(FakeConnection(), self)
+        self.server = Server(self)
         self.server.connection.attach(self)
         self.serverThread = Thread(target=self.server.connection.start_listening, daemon=True)
         self.serverThread.start()
 
-        # Start the input thread
-        self.input = Input(self)
-        self.intputThread = Thread(target=self.input.start_listening)
-        self.intputThread.start()
-
-        self.knock = {}
+        self.knocks = {}
         self.rooms = {}
         self.roomRecipients = {}
 
@@ -104,8 +90,8 @@ class SimpleClient(Client, IdentityManager):
                         f"Recieved a knock request from {recipient} but we don't know who it is.")
                     self.display.display_debug(f"We can use /rename {recipient} <name> to set their name")
 
-                self.knock[recipient] = Knock(recipient)
-                self.knock[recipient].state = KnockState.KNOCKING_RECEIVED
+                self.knocks[recipient] = Knock(recipient)
+                self.knocks[recipient].state = KnockState.KNOCKING_RECEIVED
 
             case PacketCode.KNOCK_RESPONSE:
                 accepted = packet.options[0] == b'\x01'
@@ -113,30 +99,32 @@ class SimpleClient(Client, IdentityManager):
                 try:
                     recipient = self.getIdentity(key_id)
                 except UnknownRecipient:
-                    self.display.display_error(f"Recieved a knock response from {bytes_to_str(key_id)} but we don't know who it is.")
+                    self.display.display_error(f"Recieved a knock response from {bytes_to_str(key_id)}"
+                                               f"but we don't know who it is.")
                     return self.display.display_debug(f"Have we ever ask them in the first place ?")
 
-                if recipient not in self.knock:
+                if recipient not in self.knocks:
                     return self.display.display_error(f"Recieving a {'positive' if accepted else 'negative'}"
                                                       f" knocking response from {recipient}"
                                                       f" but never asked them in the first place")
 
-                if self.knock[recipient].state == KnockState.KNOCKING:
+                if self.knocks[recipient].state == KnockState.KNOCKING:
                     self.display.display_debug(f'Server forwarded {recipient}\'s response to our knock but we never'
-                                               f'recieved ACK from the server itself. We won\'t mind and pretend it did')
-                    self.knock[recipient].state = KnockState.KNOCKING_ACK
+                                               f'recieved ACK from the server itself.'
+                                               f'We won\'t mind and pretend it did')
+                    self.knocks[recipient].state = KnockState.KNOCKING_ACK
 
-                if self.knock[recipient].state == KnockState.KNOCKING_ACK:
+                if self.knocks[recipient].state == KnockState.KNOCKING_ACK:
                     if accepted:
-                        self.knock[recipient].state = KnockState.KNOCK_ACCEPTED
+                        self.knocks[recipient].state = KnockState.KNOCK_ACCEPTED
                         return self.display.display_success(f"{recipient} accepted our knock")
                     else:
-                        self.knock[recipient].state = KnockState.KNOCK_REFUSED
+                        self.knocks[recipient].state = KnockState.KNOCK_REFUSED
                         return self.display.display_error(f"{recipient} refused our knock")
                 else:
                     return self.display.display_error(f"Recieving a {'positive' if accepted else 'negative'}"
                                                       f" knocking response from {recipient}"
-                                                      f" but we were {self.knock[recipient].state}")
+                                                      f" but we were {self.knocks[recipient].state}")
             case PacketCode.ROOM_NEW:
                 room_key_length, room_key, key_id_length, key_id = packet.options
                 try:
@@ -146,14 +134,14 @@ class SimpleClient(Client, IdentityManager):
                         f"Recieved a room with {bytes_to_str(key_id)} but we don't know who it is.")
                     return self.display.display_debug(f"Have we ever ask them in the first place ?")
 
-                if recipient not in self.knock:
+                if recipient not in self.knocks:
                     self.display.display_error(f"Recieving a room with {recipient}"
-                                                      f" but never asked them in the first place")
+                                               f" but never asked them in the first place")
                     self.display.display_log(f"Room with {recipient} joined anyway")
                     self._join_room(recipient, room_key)
                     return
 
-                match self.knock[recipient].state:
+                match self.knocks[recipient].state:
                     case KnockState.KNOCK_REFUSED:
                         self.display.display_error(f"Server created a room with {recipient} despite we/they refused.")
                         self.display.display_log(f"Joining room with {recipient} anyway")
@@ -161,25 +149,25 @@ class SimpleClient(Client, IdentityManager):
                         self.display.display_log(f"Room with {recipient} successfully joined")
                     case _:
                         self.display.display_error(f"Server created a room with {recipient}"
-                                                   f"but we were {self.rooms[recipient].state}")
+                                                   f"but we were {self.knocks[recipient].state}")
                         self.display.display_log(f"Joining room with {recipient} anyway")
 
                 self._join_room(recipient, room_key)
 
             case PacketCode.MESSAGE_SEND:
                 room_key_length, room_key, encryption, payload = packet.options
-                room_id = Identity(key_id = room_key, key_id_length=room_key_length)
+                room_id = Identity(key_id=room_key, key_id_length=room_key_length)
                 if room_id not in self.rooms:
                     return self.display.display_error(f"Recieved a message in room {room_id} despite we are not in it :"
-                                               f" {payload.decode('ascii')}")
+                                                      f" {payload.decode('ascii')}")
 
                 if self.rooms[room_id].closed:
                     self.display.display_error(f"We recieved a message in room {room_id} "
                                                f"but it was closed")
 
-                message: Message = Message(room=room_id,
-                                           message_type=MessageType.RECEIVE,
-                                           payload=payload, ack=True)
+                message: RoomMessage = RoomMessage(room=room_id,
+                                                   message_type=MessageType.RECEIVE,
+                                                   payload=payload, ack=True)
                 self._display_message(message)
 
             case PacketCode.ROOM_CLOSE:
@@ -192,7 +180,7 @@ class SimpleClient(Client, IdentityManager):
                 if self.rooms[room_id].closed:
                     self.display.display_error(f"Server tells us it is closing room {room_id}"
                                                f" despite it already being closed")
-                self.rooms[room_id].close = True
+                self.rooms[room_id].closed = True
 
             case _:
                 self.display.display_error(f"This version of client yet not know how to interpret {packet.code.name}")
@@ -215,7 +203,7 @@ class SimpleClient(Client, IdentityManager):
         if self.server.state == ConnectionState.CONNECTION_INITIALIZED_KEY:
             return self._validate_connection()
 
-        for knock in self.knock.values():
+        for knock in self.knocks.values():
             if knock.state == KnockState.KNOCKING:
                 knock.state = KnockState.KNOCKING_ACK
                 return self.display.display_debug("Knock ack by server")
@@ -263,11 +251,11 @@ class SimpleClient(Client, IdentityManager):
         :param recipient: Recipient to knock
         """
         self.display.display_log(f'Knocking {recipient}')
-        self.knock[recipient] = Knock(recipient)
-        self.knock[recipient].state = KnockState.KNOCKING
+        self.knocks[recipient] = Knock(recipient)
+        self.knocks[recipient].state = KnockState.KNOCKING
         self.send_pck(self.packetGenerator.get_knock_packet(recipient))
 
-    def _display_message(self, message: Message):
+    def _display_message(self, message: RoomMessage):
         """
         Display a message in a room
         :param message: Message to display
@@ -289,8 +277,9 @@ class SimpleClient(Client, IdentityManager):
         if self.rooms[room_id].closed:
             return self.display.display_error(f"Room with {recipient} is closed")
 
-        message: Message = Message(sender=self.identity, room=self.rooms[recipient], message_type=MessageType.SENT,
-                                   payload=payload, ack=False)
+        message: RoomMessage = RoomMessage(sender=self.identity, room=self.rooms[recipient],
+                                           message_type=MessageType.SENT,
+                                           payload=payload, ack=False)
         self._display_message(message)
         self.send_pck(self.packetGenerator.get_send_message_packet(message))
 
@@ -350,18 +339,17 @@ class SimpleClient(Client, IdentityManager):
                             self.display.display_log(f"{contact} : {bytes_to_str(contact.key_id)}")
                     case 'rooms':
                         for room in self.rooms.values():
-                            self.display.display_log(f"{room.name} : {room.state}")
+                            self.display.display_log(f"{room.name} : {room.closed=}")
+                    case 'knocks':
+                        for knock in self.knocks.values():
+                            self.display.display_log(f"{knock.recipient.name} : {knock.state}")
             case 'help':
                 self.display.display_debug("connect")
                 self.display.display_debug("knock <recipient> <message>")
                 self.display.display_debug("send <recipient> <message>")
-                self.display.display_debug("list <contacts/rooms>")
+                self.display.display_debug("list <contacts/rooms/knocks>")
                 self.display.display_debug("server <pck>")
                 self.display.display_debug("echo <message>")
             case _:
                 self.display.display_error("Unknown command")
                 self.display.display_log(command)
-
-    def _exit(self, code: int = 0):
-        self.display.exit()
-        super()._exit(code)

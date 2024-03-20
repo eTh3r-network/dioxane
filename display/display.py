@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
 from client.client import Client
-from models.message import Message
+from models.room_message import RoomMessage
 
 
 class Display(ABC):
@@ -25,7 +25,11 @@ class Display(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def display_message(self, message: Message | str):
+    def display_message(self, message: RoomMessage | str):
+        raise NotImplementedError
+
+    @abstractmethod
+    def update_message(self, message: RoomMessage | str):
         raise NotImplementedError
 
     @abstractmethod

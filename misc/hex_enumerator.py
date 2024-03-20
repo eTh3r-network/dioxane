@@ -43,7 +43,7 @@ def bytes_to_str(value: bytearray) -> str:
     return hex(int.from_bytes(value, 'big'))
 
 
-def _read_bytes(bytesEnumerator: enumerate, size: int | bytearray = 1, value: bytearray = bytearray(0)) -> bytearray:
+def read_bytes(bytesEnumerator: enumerate, size: int | bytearray = 1, value: bytearray = bytearray(0)) -> bytearray:
     """
     Read bytes from an enumerator and return them as a bytearray
     :param bytesEnumerator: enumerator

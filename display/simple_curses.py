@@ -3,7 +3,8 @@ from enum import IntEnum, auto
 
 from client.client import Client
 from display.display import Display
-from models.message import Message, MessageType
+from models.message import MessageType
+from models.room_message import RoomMessage
 
 
 class SimpleCursesColor(IntEnum):
@@ -27,7 +28,7 @@ class SimpleCurses(Display):
 
     color_variation: dict[SimpleCursesColor]
 
-    messages: list[Message]
+    messages: list[RoomMessage]
     input_windows: "_CursesWindow"
 
     def __init__(self, client: Client):
@@ -100,7 +101,7 @@ class SimpleCurses(Display):
             self._display_message(message, i)
             i += 1
 
-    def _display_message(self, message: Message, height: int):
+    def _display_message(self, message: RoomMessage, height: int):
 
         header = ""
         color = SimpleCursesColor.CLASSIC
@@ -147,9 +148,9 @@ class SimpleCurses(Display):
         self._display_line(height=self.height - 1, left_txt="> " + prompt, fillingchar=" ", windows=self.stdscr)
         self._update_cursor()
 
-    def display_message(self, message: Message | str):
+    def display_message(self, message: RoomMessage | str):
         if type(message) is str:
-            return self.display_message(Message(payload=message, message_type=MessageType.LOG))
+            return self.display_message(RoomMessage(payload=message, message_type=MessageType.LOG))
 
         self.messages.append(message)
         if len(self.messages) > self.height - 2:
@@ -159,18 +160,18 @@ class SimpleCurses(Display):
             self._display_message(message, len(self.messages))
 
     def display_error(self, text: str):
-        return self.display_message(Message(payload=text, message_type=MessageType.ERROR))
+        return self.display_message(RoomMessage(payload=text, message_type=MessageType.ERROR))
 
     def display_log(self, text: str):
-        return self.display_message(Message(payload=text, message_type=MessageType.LOG))
+        return self.display_message(RoomMessage(payload=text, message_type=MessageType.LOG))
 
     def display_debug(self, text: str):
-        return self.display_message(Message(payload=text, message_type=MessageType.DEBUG))
+        return self.display_message(RoomMessage(payload=text, message_type=MessageType.DEBUG))
 
     def display_success(self, text: str):
-        return self.display_message(Message(payload=text, message_type=MessageType.SUCCESS))
+        return self.display_message(RoomMessage(payload=text, message_type=MessageType.SUCCESS))
 
-    def update_message(self, message: Message):
+    def update_message(self, message: RoomMessage):
         try:
             index: int = self.messages.index(message)
             self._display_message(message, index)
@@ -187,3 +188,6 @@ class SimpleCurses(Display):
         curses.echo()
         self.stdscr.keypad(False)
         curses.endwin()
+
+    def scroll(self, value: int):
+        pass

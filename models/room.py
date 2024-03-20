@@ -1,5 +1,3 @@
-from enum import Enum, auto
-
 from models.identity import Identity
 from models.message import Message, MessageType
 
@@ -13,14 +11,14 @@ class Room:
     # Recipient of the room has to be saved client side so we can know afterward who is talking in the room
     recipient: Identity
     messages: list[Message]  # List of message in the room
-    id: Identity  # Id of the room server side
+    room_id: Identity  # Id of the room server side
 
-    def __init__(self, recipient: Identity, id: Identity):
+    def __init__(self, recipient: Identity, room_id: Identity):
         self.recipient = recipient
         self.name = str(recipient)
         self.closed = False
         self.messages = []
-        self.id = id
+        self.room_id = room_id
 
     def add_message(self, message: Message):
         """

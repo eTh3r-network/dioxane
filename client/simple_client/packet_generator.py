@@ -1,7 +1,7 @@
 from client.client import Client
 from models.identity import Identity
-from models.message import Message
 from models.packet import Packet, PacketCode
+from models.room_message import RoomMessage
 
 
 class PacketGenerator:
@@ -24,14 +24,16 @@ class PacketGenerator:
         """
         return Packet(PacketCode.SEND_KEY, self.client.identity.get_key_pair())
 
-    def get_send_message_packet(self, message: Message) -> Packet:
+    # noinspection PyMethodMayBeStatic
+    def get_send_message_packet(self, message: RoomMessage) -> Packet:
         """
         Build a Message Packet
         :param message: Message to send
         :return: Message Send Packet
         """
-        return Packet(PacketCode.MESSAGE_SEND, message.room.id.get_key_id_pair().append(message.payload))
+        return Packet(PacketCode.MESSAGE_SEND, message.room.room_id.get_key_id_pair().append(message.payload))
 
+    # noinspection PyMethodMayBeStatic
     def get_knock_packet(self, recipient: Identity) -> Packet:
         """
         Build a Kncok Packet

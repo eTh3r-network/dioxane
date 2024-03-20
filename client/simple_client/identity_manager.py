@@ -1,5 +1,5 @@
 from exceptions.exceptions import UnknownRecipient
-from misc.hex_enumerator import bytes_to_int, bytes_to_str
+from misc.hex_enumerator import bytes_to_str
 from models.identity import Identity
 
 
@@ -36,7 +36,7 @@ class IdentityManager:
         try:
             if key_id in self.contactsByKey:
                 return self.contactsByKey[key_id]
-        except ValueError as e:
+        except ValueError:
             pass
 
         raise UnknownRecipient(identity)
